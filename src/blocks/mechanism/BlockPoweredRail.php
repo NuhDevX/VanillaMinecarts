@@ -12,7 +12,6 @@ use pocketmine\block\BlockTypeIds;
 use pocketmine\block\BlockTypeInfo;
 use pocketmine\block\PoweredRail;
 use pocketmine\block\utils\RailConnectionInfo;
-use pocketmine\block\VanillaBlocks;
 use pocketmine\item\Item;
 use pocketmine\math\Facing;
 use pocketmine\player\Player;
@@ -20,17 +19,7 @@ use pocketmine\player\Player;
 class BlockPoweredRail extends PoweredRail implements IRedstoneComponent {
 
     use RedstoneComponentTrait;
-
-    public function __construct()
-    {
-        $oldPoweredRail = VanillaBlocks::POWERED_RAIL();
-        parent::__construct(
-            new BlockIdentifier(BlockTypeIds::newId()),
-            $oldPoweredRail->getName(),
-            new BlockTypeInfo($oldPoweredRail->getBreakInfo(), $oldPoweredRail->getTypeTags())
-        );
-    }
-
+    
     public function onPostPlace(): void
     {
         $this->updatePower($this);
