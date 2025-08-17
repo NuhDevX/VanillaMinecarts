@@ -21,6 +21,8 @@ use pocketmine\block\Block;
 use pocketmine\block\BlockIdentifier;
 use pocketmine\block\BlockTypeIds;
 use pocketmine\block\VanillaBlocks;
+use pocketmine\block\BlockTypeInfo;
+use pocketmine\block\RuntimeBlockStateRegistry;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\data\bedrock\item\ItemTypeNames;
@@ -65,8 +67,50 @@ class VanillaMinecarts extends PluginBase {
         $this->load();
     }
 
-    private function overrideBlock(string $name, Block $oldBlock, int $id, \Closure $callback, ?string $class = null): void {
-        $this->blockLoader[] = BlockLoader::createBlock($name, $oldBlock, $id, $callback, $class);
+    public function overrideBlock(int $id, Block $balok, ?string $class = null): void {
+        $regis = RuntimeBlockStateRegistry::getInstance();
+        ( function () use($id){
+            unset($this->typeIndex[$id]);
+        })->call($regis);
+        $bid = $balok->getIdInfo();
+        if ($class !== null) {
+            new BlockIdentifier($bid->getBlockTypeId(), $class);
+            
+        }
+        $this->forceRegisters($balok);
+    }
+
+    public function forceRegisters(Block $block) : void{
+		$typeId = $block->getTypeId();
+        $regis = RuntimeBlockStateRegistry::getInstance();
+        (function () use($block, $typeId) {
+			/** @noinspection all */
+			$this->typeIndex[$typeId] = clone $block;
+            })->call($regis);	
+
+		foreach($block->generateStatePermutations() as $v){
+			$this->fillStaticArrays($v->getStateId(), $v);
+        }
+    }
+    
+    private function fillStaticArrays(int $index, Block $block) : void{
+		$fullId = $block->getStateId();
+        $regis = RuntimeBlockStateRegistry::getInstance();
+		if($index !== $fullId){
+			throw new \pocketmine\utils\AssumptionFailedError("Cannot fill static arrays for an invalid blockstate");
+		}else{
+            (function () use($block, $index) {
+			$this->fullList[$index] = $block;
+			$this->blastResistance[$index] = $block->getBreakInfo()->getBlastResistance();
+			$this->light[$index] = $block->getLightLevel();
+			$this->lightFilter[$index] = min(15, $block->getLightFilter() + LightUpdate::BASE_LIGHT_FILTER);
+			if($block->blocksDirectSkyLight()){
+				$this->blocksDirectSkyLight[$index] = true;
+			}
+
+			$this->collisionInfo[$index] = RuntimeBlockStateRegistry::calculateCollisionInfo($block);
+                })->call($regis);	
+		}
     }
 
     private function load(): void {
@@ -77,9 +121,8 @@ class VanillaMinecarts extends PluginBase {
     }
 
     private function registerBlocks(): void {
-        $this->overrideBlock("rail", VanillaBlocks::POWERED_RAIL(), BlockTypeIds::newId(), fn($bid, $name, $info) => new BlockPoweredRail($bid, $name, $info));
-        $this->overrideBlock("redstone_torch", VanillaBlocks::REDSTONE_TORCH(), BlockTypeIds::newId(), fn($bid, $name, $info) => new BlockRedstoneTorch());
-    }
+        $this->overrideBlock(BlockTypeIds::POWERED_RAIL, new BlockPoweredRail(VanillaBlocks::POWERED_RAIL()->getIdInfo(), "Powered Rail", new BlockTypeInfo(VanillaBlocks::POWERED_RAIL()->getBreakInfo(), VanillaBlocks::POWERED_RAIL()->getTypeTags())));
+        $this->overrideBlock(BlockTypeIds::REDSTONE_TORCH, new BlockRedstoneTorch(VanillaBlocks::REDSTONE_TORCH()->getIdInfo(), "Redstone Torch", new BlockTypeInfo(VanillaBlocks::REDSTONE_TORCH()->getBreakInfo(), VanillaBlocks::REDSTONE_TORCH())));
 
     private function registerItems(): void {
         $itemDeserializer = GlobalItemDataHandlers::getDeserializer();
