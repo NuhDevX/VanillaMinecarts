@@ -22,17 +22,6 @@ class BlockRedstoneTorch extends RedstoneTorch implements IRedstoneComponent, IL
 
     use LinkRedstoneWireTrait;
 
-    public function __construct()
-    {
-        $oldRedstoneTorch = VanillaBlocks::REDSTONE_TORCH();
-        parent::__construct(
-            new BlockIdentifier(BlockTypeIds::newId()),
-            $oldRedstoneTorch->getName(),
-            new BlockTypeInfo($oldRedstoneTorch->getBreakInfo(), $oldRedstoneTorch->getTypeTags())
-        );
-    }
-
-
     public function onPostPlace(): void {
         $this->onRedstoneUpdate();
         BlockUpdateHelper::updateAroundDirectionRedstone($this, Facing::UP);
